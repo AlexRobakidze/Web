@@ -1,0 +1,75 @@
+body {
+    margin: 0;
+    font: Arial;
+    background: #eef5f7;
+    color: #222;
+}
+
+.header {
+    text-align: center;
+    padding: 30px 20px;
+    background: #2f8f9d;
+    color: white;
+}
+
+.main {
+    width: 90%;
+    max-width: 900px;
+    margin: 30px auto;
+}
+
+.card {
+    background: white;
+    padding: 20px;
+    margin-bottom: 20px;
+    border-radius: 12px;
+}
+
+.symptoms-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.symptom-button {
+    padding: 12px 18px;
+    border: 1px solid #2f8f9d;
+    background: white;
+    color: #2f8f9d;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.symptom-button.active {
+    background: #2f8f9d;
+    color: white;
+}
+
+.buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.main-button, .second-button {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.main-button {
+    background: #2f8f9d;
+    color: white;
+}
+
+.second-button {
+    background: #dddddd;
+    color: #222;
+}
+
+#resultText {
+    font-size: 20px;
+    font-weight: normal;
+}
