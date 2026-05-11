@@ -1,12 +1,13 @@
-image: node:22
-
+# The Docker image that will be used to build your app
+image: "image: node:22"
 pages:
   stage: deploy
   script:
+    - cd app
     - npm ci
     - npm run build
-    - mkdir -p public
-    - cp -r dist/* public/
+    - mkdir -p ../public
+    - cp -r dist/* ../public/
   artifacts:
     paths:
       - public
