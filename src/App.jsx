@@ -8,26 +8,23 @@ const TASKS_STORAGE_KEY = "tasks-list-project-web";
 const weatherApiKey = "1c0dd0662b4c093cf1bad01f6ee1dca9";
 
 function App() {
-  const [todos, setTodos] = useState([]);
+  // Инициализируем из localStorage сразу, чтобы ESLint (react-hooks/set-state-in-effect)
+  // не ругался на setState внутри useEffect.
+  const [todos, setTodos] = useState(() => {
+    const savedTasks = localStorage.getItem(TASKS_STORAGE_KEY);
+    if (!savedTasks) return [];
+    try {
+      const parsedTasks = JSON.parse(savedTasks);
+      return Array.isArray(parsedTasks) ? parsedTasks : [];
+    } catch {
+      console.error("Ошибка чтения задач из localStorage");
+      return [];
+    }
+  });
   const [rates, setRates] = useState({});
   const [weatherData, setWeatherData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    const savedTasks = localStorage.getItem(TASKS_STORAGE_KEY);
-
-    if (savedTasks) {
-      try {
-        const parsedTasks = JSON.parse(savedTasks);
-        if (Array.isArray(parsedTasks)) {
-          setTodos(parsedTasks);
-        }
-      } catch {
-        console.error("Ошибка чтения задач из localStorage");
-      }
-    }
-  }, []);
 
   useEffect(() => {
     localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(todos));
