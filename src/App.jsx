@@ -10,6 +10,7 @@ const METEOBLUE_API_KEY = "ВСТАВЬ_СЮДА_СВОЙ_КЛЮЧ_METEOBLUE";
 function App() {
   const [rates, setRates] = useState({});
   const [weatherData, setWeatherData] = useState(null);
+  const [weatherError, setWeatherError] = useState("");
   const [dayInfo, setDayInfo] = useState(null);
 
   const [loading, setLoading] = useState(true);
@@ -76,31 +77,45 @@ function App() {
     }
 
     async function fetchWeatherByCoords(lat, lon) {
-      const weatherResponse = await axios.get(
-        `https://my.meteoblue.com/packages/basic-1h?lat=${lat}&lon=${lon}&format=json&apikey=${METEOBLUE_API_KEY}`
-      );
+      try {
+        setWeatherError("");
 
-      const data = weatherResponse.data?.data_1h;
+        const weatherResponse = await axios.get(
+          `https://my.meteoblue.com/packages/basic-1h?lat=${lat}&lon=${lon}&format=json&apikey=${METEOBLUE_API_KEY}`
+        );
 
-      if (!data) {
-        throw new Error("Нет данных о погоде.");
+        console.log("Meteoblue response:", weatherResponse.data);
+
+        const data = weatherResponse.data?.data_1h;
+
+        if (!data) {
+          throw new Error("Meteoblue не вернул блок data_1h.");
+        }
+
+        const temperature = data.temperature?.[0];
+        const feltTemperature = data.felttemperature?.[0];
+        const windSpeed = data.windspeed?.[0];
+        const precipitation = data.precipitation?.[0];
+        const humidity = data.relativehumidity?.[0];
+
+        setWeatherData({
+          temperature,
+          feltTemperature,
+          windSpeed,
+          precipitation,
+          humidity,
+        });
+      } catch (err) {
+        console.error("Ошибка загрузки погоды:", err);
+        setWeatherError("Погода временно недоступна.");
+        setWeatherData(null);
       }
-
-      setWeatherData({
-        temperature: data.temperature?.[0],
-        feltTemperature: data.felttemperature?.[0],
-        windSpeed: data.windspeed?.[0],
-        precipitation: data.precipitation?.[0],
-        humidity: data.relativehumidity?.[0],
-      });
     }
 
     async function fetchWeather() {
       return new Promise((resolve) => {
         if (!navigator.geolocation) {
-          fetchWeatherByCoords(55.7558, 37.6173)
-            .then(resolve)
-            .catch(resolve);
+          fetchWeatherByCoords(55.7558, 37.6173).finally(resolve);
           return;
         }
 
@@ -109,21 +124,11 @@ function App() {
             const lat = position.coords.latitude;
             const lon = position.coords.longitude;
 
-            try {
-              await fetchWeatherByCoords(lat, lon);
-            } catch (err) {
-              console.error("Ошибка загрузки погоды:", err);
-            }
-
+            await fetchWeatherByCoords(lat, lon);
             resolve();
           },
           async () => {
-            try {
-              await fetchWeatherByCoords(55.7558, 37.6173);
-            } catch (err) {
-              console.error("Ошибка загрузки погоды:", err);
-            }
-
+            await fetchWeatherByCoords(55.7558, 37.6173);
             resolve();
           }
         );
@@ -251,8 +256,8 @@ function App() {
               </>
             )}
 
-            {!loading && !weatherData && (
-              <p className="small-text">Погода временно недоступна.</p>
+            {!loading && weatherError && (
+              <p className="small-text">{weatherError}</p>
             )}
           </div>
 
