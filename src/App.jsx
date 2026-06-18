@@ -1,66 +1,29 @@
-import { useCallback, useEffect, useState } from "react";
-import axios from "axios";
+import React, { useEffect, useState } from "react";
 import "./App.css";
 import ToDoForm from "./AddTask";
 import ToDo from "./Task";
+import axios from "axios";
 
 const TASKS_STORAGE_KEY = "tasks-list-project-web";
-const weatherApiKey = "1c0dd0662b4c093cf1bad01f6ee1dca9";
-const DOG_API_URL = "https://dog.ceo/api/breeds/image/random";
 
 function App() {
-  const [todos, setTodos] = useState(() => {
-    const savedTasks = localStorage.getItem(TASKS_STORAGE_KEY);
-
-    if (!savedTasks) return [];
-
-    try {
-      const parsedTasks = JSON.parse(savedTasks);
-      return Array.isArray(parsedTasks) ? parsedTasks : [];
-    } catch {
-      console.error("Ошибка чтения задач из localStorage");
-      return [];
-    }
-  });
-
   const [rates, setRates] = useState({});
-  const [weatherData, setWeatherData] = useState(null);
+  const [dayInfo, setDayInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const [dogImage, setDogImage] = useState("");
-  const [dogLoading, setDogLoading] = useState(false);
-  const [dogError, setDogError] = useState("");
-
-  const fetchDogImage = useCallback(async () => {
-    try {
-      setDogLoading(true);
-      setDogError("");
-
-      const dogResponse = await axios.get(DOG_API_URL);
-
-      if (dogResponse.data.status !== "success" || !dogResponse.data.message) {
-        throw new Error("Dog API вернул неправильный ответ");
-      }
-
-      setDogImage(dogResponse.data.message);
-    } catch {
-      setDogError("Не удалось загрузить картинку собаки");
-    } finally {
-      setDogLoading(false);
-    }
-  }, []);
+  const [todos, setTodos] = useState([]);
 
   useEffect(() => {
-    localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(todos));
-  }, [todos]);
-
-  useEffect(() => {
-    async function fetchData() {
+    async function fetchApiData() {
       try {
         const currencyResponse = await axios.get(
           "https://www.cbr-xml-daily.ru/daily_json.js"
         );
+
+        if (!currencyResponse.data || !currencyResponse.data.Valute) {
+          throw new Error("Нет данных о валюте.");
+        }
 
         const USDrate = currencyResponse.data.Valute.USD.Value.toFixed(2).replace(
           ".",
@@ -72,50 +35,83 @@ function App() {
           ","
         );
 
-        setRates({ USDrate, EURrate });
+        setRates({
+          USDrate,
+          EURrate,
+        });
 
-        navigator.geolocation.getCurrentPosition(
-          async (position) => {
-            try {
-              const lat = position.coords.latitude;
-              const lon = position.coords.longitude;
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, "0");
+        const day = String(today.getDate()).padStart(2, "0");
+        const formattedDate = `${year}${month}${day}`;
 
-              const weatherResponse = await axios.get(
-                `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${weatherApiKey}`
-              );
-
-              setWeatherData(weatherResponse.data);
-            } catch {
-              setError("Ошибка загрузки погоды");
-            }
-          },
-          () => {
-            setError("Разрешите доступ к геолокации для показа погоды");
-          }
+        const dayResponse = await axios.get(
+          `https://isdayoff.ru/${formattedDate}?cc=ru`
         );
-      } catch {
-        setError("Ошибка загрузки данных");
+
+        const dayCode = String(dayResponse.data).trim();
+
+        let dayText = "Не удалось определить тип дня";
+
+        if (dayCode === "0") {
+          dayText = "Сегодня рабочий день";
+        } else if (dayCode === "1") {
+          dayText = "Сегодня выходной или праздничный день";
+        } else if (dayCode === "2") {
+          dayText = "Сегодня сокращённый рабочий день";
+        }
+
+        setDayInfo({
+          date: `${day}.${month}.${year}`,
+          code: dayCode,
+          text: dayText,
+        });
+      } catch (err) {
+        console.error(err);
+        setError("Ошибка загрузки данных из API.");
       } finally {
         setLoading(false);
       }
     }
 
-    fetchData();
-    fetchDogImage();
-  }, [fetchDogImage]);
+    fetchApiData();
+  }, []);
+
+  useEffect(() => {
+    const storedTasks = localStorage.getItem(TASKS_STORAGE_KEY);
+
+    if (storedTasks) {
+      try {
+        const parsedTasks = JSON.parse(storedTasks);
+
+        if (Array.isArray(parsedTasks)) {
+          setTodos(parsedTasks);
+        }
+      } catch (err) {
+        console.error("Ошибка чтения задач из localStorage:", err);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(todos));
+    } catch (err) {
+      console.error("Ошибка сохранения задач в localStorage:", err);
+    }
+  }, [todos]);
 
   const addTask = (userInput) => {
-    const text = userInput.trim();
+    if (userInput.trim()) {
+      const newItem = {
+        id: Math.random().toString(36).substr(2, 9),
+        task: userInput,
+        complete: false,
+      };
 
-    if (!text) return;
-
-    const newTask = {
-      id: crypto.randomUUID(),
-      task: text,
-      complete: false,
-    };
-
-    setTodos([...todos, newTask]);
+      setTodos([...todos, newItem]);
+    }
   };
 
   const removeTask = (id) => {
@@ -124,71 +120,58 @@ function App() {
 
   const handleToggle = (id) => {
     setTodos(
-      todos.map((todo) =>
-        todo.id === id ? { ...todo, complete: !todo.complete } : todo
+      todos.map((task) =>
+        task.id === id ? { ...task, complete: !task.complete } : task
       )
     );
   };
 
   return (
-    <div className="app">
-      <section className="info">
-        {loading && <p>Загрузка...</p>}
-
-        {!loading && error && <p className="error">{error}</p>}
-
-        {!loading && !error && (
-          <>
-            <div className="card">
-              <h2>Курс валют</h2>
+    <div className="App">
+      <div className="info">
+        <div className="card">
+          <h2>Курс валют</h2>
+          {loading && <p>Загрузка...</p>}
+          {!loading && error && <p className="error">{error}</p>}
+          {!loading && !error && (
+            <>
               <p>Доллар США: {rates.USDrate} руб.</p>
               <p>Евро: {rates.EURrate} руб.</p>
-            </div>
-
-            {weatherData && (
-              <div className="card">
-                <h2>Погода сегодня</h2>
-                <p>🌡️ {(weatherData.main.temp - 273.15).toFixed(1)}°C</p>
-                <p>💨 {weatherData.wind.speed} м/с</p>
-                <p>☁️ {weatherData.clouds.all}%</p>
-              </div>
-            )}
-          </>
-        )}
-
-        <div className="card dog-card">
-          <h2>Случайная собака</h2>
-
-          {dogLoading && !dogImage && <p>Загрузка собаки...</p>}
-
-          {dogImage && (
-            <img className="dog-image" src={dogImage} alt="Случайная собака" />
+            </>
           )}
-
-          {dogError && <p className="error">{dogError}</p>}
-
-          <button type="button" onClick={fetchDogImage} disabled={dogLoading}>
-            {dogLoading ? "Загрузка..." : "Другая собака"}
-          </button>
         </div>
-      </section>
 
-      <main className="todo-wrapper">
-        <h1>Список задач: {todos.length}</h1>
+        <div className="card">
+          <h2>Производственный календарь РФ</h2>
+          {loading && <p>Загрузка...</p>}
+          {!loading && error && <p className="error">{error}</p>}
+          {!loading && !error && dayInfo && (
+            <>
+              <p>Дата: {dayInfo.date}</p>
+              <p>{dayInfo.text}</p>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className="todo-wrapper">
+        <header>
+          <h1 className="list-header">Список задач: {todos.length}</h1>
+        </header>
 
         <ToDoForm addTask={addTask} />
 
         <div className="todo-list">
           {todos.map((todo) => (
             <ToDo
-              key={todo.id}
               todo={todo}
+              key={todo.id}
               toggleTask={handleToggle}
               removeTask={removeTask}
             />
           ))}
         </div>
-      </main>
+      </div>
     </div>
   );
 }
