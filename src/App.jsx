@@ -5,68 +5,137 @@ import ToDo from "./Task";
 import axios from "axios";
 
 const TASKS_STORAGE_KEY = "tasks-list-project-web";
+const METEOBLUE_API_KEY = "ВСТАВЬ_СЮДА_СВОЙ_КЛЮЧ_METEOBLUE";
 
 function App() {
   const [rates, setRates] = useState({});
+  const [weatherData, setWeatherData] = useState(null);
   const [dayInfo, setDayInfo] = useState(null);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const [todos, setTodos] = useState([]);
 
   useEffect(() => {
-    async function fetchApiData() {
+    async function fetchCurrency() {
+      const currencyResponse = await axios.get(
+        "https://www.cbr-xml-daily.ru/daily_json.js"
+      );
+
+      if (!currencyResponse.data || !currencyResponse.data.Valute) {
+        throw new Error("Нет данных о валюте.");
+      }
+
+      const USDrate = currencyResponse.data.Valute.USD.Value.toFixed(2).replace(
+        ".",
+        ","
+      );
+
+      const EURrate = currencyResponse.data.Valute.EUR.Value.toFixed(2).replace(
+        ".",
+        ","
+      );
+
+      setRates({
+        USDrate,
+        EURrate,
+      });
+    }
+
+    async function fetchDayInfo() {
+      const today = new Date();
+
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, "0");
+      const day = String(today.getDate()).padStart(2, "0");
+
+      const formattedDate = `${year}${month}${day}`;
+
+      const dayResponse = await axios.get(
+        `https://isdayoff.ru/${formattedDate}?cc=ru`
+      );
+
+      const dayCode = String(dayResponse.data).trim();
+
+      let dayText = "Не удалось определить тип дня";
+
+      if (dayCode === "0") {
+        dayText = "Сегодня рабочий день";
+      } else if (dayCode === "1") {
+        dayText = "Сегодня выходной или праздничный день";
+      } else if (dayCode === "2") {
+        dayText = "Сегодня сокращённый рабочий день";
+      }
+
+      setDayInfo({
+        date: `${day}.${month}.${year}`,
+        code: dayCode,
+        text: dayText,
+      });
+    }
+
+    async function fetchWeatherByCoords(lat, lon) {
+      const weatherResponse = await axios.get(
+        `https://my.meteoblue.com/packages/basic-1h?lat=${lat}&lon=${lon}&format=json&apikey=${METEOBLUE_API_KEY}`
+      );
+
+      const data = weatherResponse.data?.data_1h;
+
+      if (!data) {
+        throw new Error("Нет данных о погоде.");
+      }
+
+      setWeatherData({
+        temperature: data.temperature?.[0],
+        feltTemperature: data.felttemperature?.[0],
+        windSpeed: data.windspeed?.[0],
+        precipitation: data.precipitation?.[0],
+        humidity: data.relativehumidity?.[0],
+      });
+    }
+
+    async function fetchWeather() {
+      return new Promise((resolve) => {
+        if (!navigator.geolocation) {
+          fetchWeatherByCoords(55.7558, 37.6173)
+            .then(resolve)
+            .catch(resolve);
+          return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+
+            try {
+              await fetchWeatherByCoords(lat, lon);
+            } catch (err) {
+              console.error("Ошибка загрузки погоды:", err);
+            }
+
+            resolve();
+          },
+          async () => {
+            try {
+              await fetchWeatherByCoords(55.7558, 37.6173);
+            } catch (err) {
+              console.error("Ошибка загрузки погоды:", err);
+            }
+
+            resolve();
+          }
+        );
+      });
+    }
+
+    async function fetchAllApiData() {
       try {
-        const currencyResponse = await axios.get(
-          "https://www.cbr-xml-daily.ru/daily_json.js"
-        );
+        setLoading(true);
+        setError("");
 
-        if (!currencyResponse.data || !currencyResponse.data.Valute) {
-          throw new Error("Нет данных о валюте.");
-        }
-
-        const USDrate = currencyResponse.data.Valute.USD.Value.toFixed(2).replace(
-          ".",
-          ","
-        );
-
-        const EURrate = currencyResponse.data.Valute.EUR.Value.toFixed(2).replace(
-          ".",
-          ","
-        );
-
-        setRates({
-          USDrate,
-          EURrate,
-        });
-
-        const today = new Date();
-        const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, "0");
-        const day = String(today.getDate()).padStart(2, "0");
-        const formattedDate = `${year}${month}${day}`;
-
-        const dayResponse = await axios.get(
-          `https://isdayoff.ru/${formattedDate}?cc=ru`
-        );
-
-        const dayCode = String(dayResponse.data).trim();
-
-        let dayText = "Не удалось определить тип дня";
-
-        if (dayCode === "0") {
-          dayText = "Сегодня рабочий день";
-        } else if (dayCode === "1") {
-          dayText = "Сегодня выходной или праздничный день";
-        } else if (dayCode === "2") {
-          dayText = "Сегодня сокращённый рабочий день";
-        }
-
-        setDayInfo({
-          date: `${day}.${month}.${year}`,
-          code: dayCode,
-          text: dayText,
-        });
+        await Promise.all([fetchCurrency(), fetchDayInfo(), fetchWeather()]);
       } catch (err) {
         console.error(err);
         setError("Ошибка загрузки данных из API.");
@@ -75,7 +144,7 @@ function App() {
       }
     }
 
-    fetchApiData();
+    fetchAllApiData();
   }, []);
 
   useEffect(() => {
@@ -128,50 +197,99 @@ function App() {
 
   return (
     <div className="App">
-      <div className="info">
-        <div className="card">
-          <h2>Курс валют</h2>
-          {loading && <p>Загрузка...</p>}
-          {!loading && error && <p className="error">{error}</p>}
-          {!loading && !error && (
-            <>
-              <p>Доллар США: {rates.USDrate} руб.</p>
-              <p>Евро: {rates.EURrate} руб.</p>
-            </>
-          )}
-        </div>
+      <main className="page">
+        <section className="hero">
+          <p className="subtitle">React + API</p>
+          <h1>Список задач</h1>
+          <p className="hero-text">
+            Курсы валют, погода и производственный календарь РФ загружаются из
+            внешних API.
+          </p>
+        </section>
 
-        <div className="card">
-          <h2>Производственный календарь РФ</h2>
-          {loading && <p>Загрузка...</p>}
-          {!loading && error && <p className="error">{error}</p>}
-          {!loading && !error && dayInfo && (
-            <>
-              <p>Дата: {dayInfo.date}</p>
-              <p>{dayInfo.text}</p>
-            </>
-          )}
-        </div>
-      </div>
+        {loading && <p className="loading">Загрузка данных...</p>}
 
-      <div className="todo-wrapper">
-        <header>
-          <h1 className="list-header">Список задач: {todos.length}</h1>
-        </header>
+        {error && <p className="error main-error">{error}</p>}
 
-        <ToDoForm addTask={addTask} />
+        <section className="info">
+          <div className="card">
+            <div className="card-icon">₽</div>
+            <h2>Курс валют</h2>
 
-        <div className="todo-list">
-          {todos.map((todo) => (
-            <ToDo
-              todo={todo}
-              key={todo.id}
-              toggleTask={handleToggle}
-              removeTask={removeTask}
-            />
-          ))}
-        </div>
-      </div>
+            {!loading && !error && (
+              <>
+                <p>
+                  Доллар США: <strong>{rates.USDrate} руб.</strong>
+                </p>
+                <p>
+                  Евро: <strong>{rates.EURrate} руб.</strong>
+                </p>
+              </>
+            )}
+          </div>
+
+          <div className="card">
+            <div className="card-icon">☁</div>
+            <h2>Погода</h2>
+
+            {!loading && weatherData && (
+              <>
+                <p>
+                  Температура:{" "}
+                  <strong>{weatherData.temperature ?? "—"}°C</strong>
+                </p>
+                <p>
+                  Ощущается как:{" "}
+                  <strong>{weatherData.feltTemperature ?? "—"}°C</strong>
+                </p>
+                <p>
+                  Ветер: <strong>{weatherData.windSpeed ?? "—"} м/с</strong>
+                </p>
+                <p>
+                  Влажность: <strong>{weatherData.humidity ?? "—"}%</strong>
+                </p>
+              </>
+            )}
+
+            {!loading && !weatherData && (
+              <p className="small-text">Погода временно недоступна.</p>
+            )}
+          </div>
+
+          <div className="card">
+            <div className="card-icon">📅</div>
+            <h2>Календарь РФ</h2>
+
+            {!loading && !error && dayInfo && (
+              <>
+                <p>
+                  Дата: <strong>{dayInfo.date}</strong>
+                </p>
+                <p>{dayInfo.text}</p>
+              </>
+            )}
+          </div>
+        </section>
+
+        <section className="todo-wrapper">
+          <header>
+            <h2 className="list-header">Список задач: {todos.length}</h2>
+          </header>
+
+          <ToDoForm addTask={addTask} />
+
+          <div className="todo-list">
+            {todos.map((todo) => (
+              <ToDo
+                todo={todo}
+                key={todo.id}
+                toggleTask={handleToggle}
+                removeTask={removeTask}
+              />
+            ))}
+          </div>
+        </section>
+      </main>
     </div>
   );
 }
