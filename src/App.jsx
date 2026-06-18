@@ -5,7 +5,7 @@ import ToDo from "./Task";
 import axios from "axios";
 
 const TASKS_STORAGE_KEY = "tasks-list-project-web";
-const METEOBLUE_API_KEY = "ВСТАВЬ_СЮДА_СВОЙ_КЛЮЧ_METEOBLUE";
+const METEOBLUE_API_KEY = "e5pRVgsyPkOcXwMT";
 
 function App() {
   const [rates, setRates] = useState({});
