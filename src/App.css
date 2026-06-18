@@ -6,8 +6,8 @@ body {
   margin: 0;
   font-family: Arial, sans-serif;
   text-align: center;
-  background: #0f172a;
-  color: #ffffff;
+  background: #eef2f7;
+  color: #1f2937;
 }
 
 button {
@@ -32,24 +32,15 @@ input {
   border-radius: 8px 0 0 8px;
   outline: none;
   font-size: 16px;
-  background: #111827;
-  color: #ffffff;
-}
-
-input::placeholder {
-  color: #9ca3af;
 }
 
 form button {
   border-radius: 0 8px 8px 0;
 }
 
-.App,
 .app {
   min-height: 100vh;
   padding: 24px;
-  background: #0f172a;
-  color: #ffffff;
 }
 
 .info {
@@ -64,24 +55,21 @@ form button {
   width: min(100%, 300px);
   padding: 18px;
   border-radius: 16px;
-  background: #111827;
-  color: #ffffff;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
 }
 
 .card h2 {
   margin: 0 0 12px;
   font-size: 20px;
-  color: #ffffff;
 }
 
 .card p {
   margin: 8px 0;
-  color: #ffffff;
 }
 
 .error {
-  color: #f87171;
+  color: #dc2626;
   font-weight: 700;
 }
 
@@ -92,14 +80,13 @@ form button {
   gap: 12px;
 }
 
-/* Это новые стили только для Dog API */
 .dog-image {
   width: 100%;
   max-width: 260px;
   height: 190px;
   object-fit: cover;
   border-radius: 14px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.2);
 }
 
 .todo-wrapper {
@@ -107,15 +94,13 @@ form button {
   margin: 0 auto;
   padding: 24px;
   border-radius: 20px;
-  background: #111827;
-  color: #ffffff;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
 }
 
 .todo-wrapper h1 {
   margin-top: 0;
   margin-bottom: 20px;
-  color: #ffffff;
 }
 
 .todo-list {
@@ -155,16 +140,7 @@ form button {
   opacity: 0.75;
 }
 
-html,
-body,
-#root {
-  min-height: 100vh;
-  background: #0f172a;
-  color: #ffffff;
-}
-
 @media (max-width: 600px) {
-  .App,
   .app {
     padding: 14px;
   }
